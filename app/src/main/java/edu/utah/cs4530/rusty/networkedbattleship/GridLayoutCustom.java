@@ -9,10 +9,10 @@ import android.view.ViewGroup;
  */
 public class GridLayoutCustom extends ViewGroup implements GridSpaceView.OnGridSpaceTouchedListener {
     /**
-     * _gridSize should represent the number of columns and rows.
+     * _gridWidth should represent the number of columns and rows.
      * These should always be the same.
      */
-    int _gridSize;
+    int _gridWidth;
 
     public GridLayoutCustom(Context context) {
         super(context);
@@ -31,17 +31,17 @@ public class GridLayoutCustom extends ViewGroup implements GridSpaceView.OnGridS
     @Override
     protected void onLayout(boolean b, int i, int i1, int i2, int i3) {
         int childCount = getChildCount();
-        _gridSize = (int) Math.sqrt((double) childCount);
+        _gridWidth = (int) Math.sqrt((double) childCount);
 
-        int childWidth = getWidth() / _gridSize;
-        int childHeight  = getHeight() / _gridSize;
+        int childWidth = getWidth() / _gridWidth;
+        int childHeight  = getHeight() / _gridWidth;
 
         for (int childIndex = 0; childIndex < childCount; childIndex++) {
 
             Rect childRect = new Rect();
-            childRect.left = (childIndex % _gridSize) * childWidth;
+            childRect.left = (childIndex % _gridWidth) * childWidth;
             childRect.right = childRect.left + childWidth;
-            childRect.top = (childIndex / _gridSize) * childHeight;
+            childRect.top = (childIndex / _gridWidth) * childHeight;
             childRect.bottom = childRect.top + childHeight;
 
             GridSpaceView childView;

@@ -44,6 +44,10 @@ public class GameListFragment extends Fragment implements ListAdapter, View.OnCl
         _onGameChosenListener = listener;
     }
 
+    public void setListViewInfo(String gameName, String gameStatus) {
+
+    }
+
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
