@@ -117,6 +117,11 @@ public class GameListFragment extends Fragment implements ListAdapter, View.OnCl
     public View getView(int i, View view, ViewGroup viewGroup) {
         //TODO: write this method to show information
         TextView textView = new TextView(getActivity());
+        //Get game information from GameLobbyService somehow....
+
+
+
+
         String gameNumber = "Game " + (i + 1);
         textView.setText(gameNumber);
         textView.setBackgroundColor(Color.RED);

@@ -21,7 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
+/**Controller for Battleship
+ *
  * Created by Rusty on 10/24/2016.
  */
 public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissileFiredListener {
@@ -207,7 +208,6 @@ public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissil
                 }
             }
         }
-        saveToFile();
     }
 
     public void setCurrentGame(int gameId) {
@@ -216,7 +216,8 @@ public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissil
     }
 
     public void addNewGame() {
-        GameObjectList.getInstance().createNewGame();
+        //GameObjectList.getInstance().createNewGame();
+        GameLobbyService.getInstance().createNewGame("WinnerTakesAll", "Luigi");
         _currentGameIndex = GameObjectList.getInstance().getGameObjectsCount() - 1;
         updateViews();
     }
