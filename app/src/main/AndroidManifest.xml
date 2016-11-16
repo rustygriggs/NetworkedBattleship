@@ -19,8 +19,9 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".GetPlayerNameActivity"></activity>
-        <activity android:name=".ShowGameDetailsActivity"></activity>
+        <activity android:name=".GetPlayerNameActivity"/>
+        <activity android:name=".ShowGameDetailsActivity"/>
+        <!--<activity android:name=".WaitScreenActivity"/>-->
     </application>
 
 </manifest>

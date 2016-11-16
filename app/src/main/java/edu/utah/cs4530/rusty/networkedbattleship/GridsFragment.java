@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,11 +26,16 @@ import java.util.Map;
  *
  * Created by Rusty on 10/24/2016.
  */
-public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissileFiredListener {
+public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissileFiredListener,
+        GameLobbyService.GameBoardsReceivedListener, GameLobbyService.MakeGuessResponseReceivedListener,
+        GameLobbyService.GameTurnResponseReceivedListener{
     public static String GAME_OBJECT_LIST_FILENAME = "Game_object_list.dat";
-    private int _currentGameIndex = 0;
+    private String _currentGameId;
+    private String _currentPlayerId;
     GridLayoutCustom _ownGrid;
     GridLayoutCustom _opponentGrid;
+
+    GameLobbyService _gameLobbyService = null;
 
     public static GridsFragment newInstance() {
         //this stuff was included when I just tabbed to write newInstance()
@@ -44,6 +50,11 @@ public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissil
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        _gameLobbyService = GameLobbyService.getInstance();
+        _gameLobbyService.setGameBoardsReceivedListener(this);
+        _gameLobbyService.setMakeGuessResponseReceivedListener(this);
+        _gameLobbyService.setGameTurnResponseReceivedListener(this);
+
         LinearLayout rootLayout = new LinearLayout(getActivity());
         rootLayout.setOrientation(LinearLayout.VERTICAL);
 
@@ -88,38 +99,40 @@ public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissil
         rootLayout.addView(_opponentGrid, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 0, 2));
 
-        updateViews();
+        //TODO: updateViews();
+
         return rootLayout;
     }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        GameObjectList.setInstance(loadFromFile(GAME_OBJECT_LIST_FILENAME));
-        if (GameObjectList.getInstance().getGameObjectsCount() == 0) {
-            GameObjectList.getInstance().createNewGame();
+
+        GameList.setInstance(loadFromFile(GAME_OBJECT_LIST_FILENAME));
+        if (GameList.getInstance().getCount() == 0) {
+//            GameList.getInstance().createNewGame(); //????
         }
+
     }
 
     @Override
     public void onMissileFired(int missileIndex) {
-        //start PlayerSwitchActivity
-        Intent showPlayerSwitch = new Intent();
-        showPlayerSwitch.setClass(getActivity(), PlayerSwitchActivity.class);
-        showPlayerSwitch.putExtra("player_1_wins", GameObjectList.getInstance().readGame(_currentGameIndex)._player1Wins);
-        showPlayerSwitch.putExtra("player_2_wins", GameObjectList.getInstance().readGame(_currentGameIndex)._player2Wins);
-        showPlayerSwitch.putExtra("missileIndex", missileIndex);
-        startActivityForResult(showPlayerSwitch, 0);
+        Guess guess = new Guess();
+        guess.gameId = _currentGameId;
+        guess.playerId = _currentPlayerId;
+        guess.xPos = missileIndex % 10;
+        guess.yPos = missileIndex / 10;
+        GameLobbyService.getInstance().makeGuess(guess);
     }
 
     /**
-     * This method will save the Gallery to disk using a Serializable fileStream
+     * This method will save the GameList to disk using a Serializable fileStream
      */
-    void saveToFile() {
+    public void saveToFile() {
         try {
             FileOutputStream fos = getActivity().openFileOutput(GAME_OBJECT_LIST_FILENAME, Activity.MODE_PRIVATE);
             ObjectOutputStream oos = new ObjectOutputStream(fos);
-            oos.writeObject(GameObjectList.getInstance());
+            oos.writeObject(GameList.getInstance());
             oos.close();
             Log.i("saving", "saving to file");
 
@@ -133,92 +146,119 @@ public class GridsFragment extends Fragment implements GridLayoutCustom.OnMissil
      * @param gameObjectListFileName is the file name where the Gallery is saved.
      * @return the Gallery that was previously saved to disk.
      */
-    private GameObjectList loadFromFile(String gameObjectListFileName) {
-        GameObjectList gameObjectList = null;
+    private GameList loadFromFile(String gameObjectListFileName) {
+        GameList gamelist = null;
         try {
             FileInputStream fis = getActivity().openFileInput(gameObjectListFileName);
             ObjectInputStream ois = new ObjectInputStream(fis);
-            gameObjectList = (GameObjectList) ois.readObject();
+            gamelist = (GameList) ois.readObject();
             ois.close();
             Log.i("loading", "loading from file");
         }
         catch (IOException | ClassNotFoundException e){
             e.printStackTrace();
         }
-        return gameObjectList;
+        return gamelist;
+    }
+
+
+    private void updateViews(Map<Integer, Integer> player1State, Map<Integer, Integer> player2State) {
+
+        for (Integer hitMissIndex : player1State.keySet()) {
+            if (player1State.get(hitMissIndex) == 0) {
+                _ownGrid.setSpaceColor(hitMissIndex, Color.WHITE);
+            } else if (player1State.get(hitMissIndex) == 1) {
+                _ownGrid.setSpaceColor(hitMissIndex, Color.RED);
+            } else if (player1State.get(hitMissIndex) == 2) {
+                _ownGrid.setSpaceColor(hitMissIndex, Color.GRAY);
+            } else {
+                _ownGrid.setSpaceColor(hitMissIndex, Color.BLUE);
+            }
+        }
+        for (Integer hitMissIndex : player2State.keySet()) {
+            if (player2State.get(hitMissIndex) == 0) {
+                _opponentGrid.setSpaceColor(hitMissIndex, Color.WHITE);
+            } else if (player2State.get(hitMissIndex) == 1) {
+                _opponentGrid.setSpaceColor(hitMissIndex, Color.RED);
+            } else if (player2State.get(hitMissIndex) == 2) {
+                _opponentGrid.setSpaceColor(hitMissIndex, Color.GRAY);
+            } else {
+                _opponentGrid.setSpaceColor(hitMissIndex, Color.BLUE);
+            }
+        }
+    }
+
+    public void setCurrentGame(String gameId, String playerId) {
+        _currentGameId = gameId;
+        _currentPlayerId = playerId;
+    }
+
+//    public void addNewGame() {
+//        //GameObjectList.getInstance().createNewGame();
+//        GameLobbyService.getInstance().createNewGame("WinnerTakesAll", "Luigi");
+//        _currentGameIndex = GameObjectList.getInstance().getGameObjectsCount() - 1;
+//        updateViews();
+//    }
+
+    @Override
+    public void onGameBoardsReceivedListener(boolean success, GameBoards gameBoards) {
+
+        saveToFile();
+        List<Position> playerBoardList = gameBoards.playerBoardList;
+        List<Position> opponentBoardList = gameBoards.opponentBoardList;
+        Map<Integer, Integer> playerBoardState = new HashMap<>();
+        Map<Integer, Integer> opponentBoardState = new HashMap<>();
+        setCurrentGame(gameBoards.gameId, gameBoards.playerId);
+        for (int i = 0; i < playerBoardList.size(); i++) {
+            int hitCode;
+            if (playerBoardList.get(i).status.equals("HIT")) {
+                hitCode = 1;
+            }
+            else if (playerBoardList.get(i).status.equals("MISS")) {
+                hitCode = 0;
+            }
+            else if (playerBoardList.get(i).status.equals("SHIP")) {
+                hitCode = 2;
+            }
+            else { //status must be "NONE" hopefully....
+                hitCode = -1;
+            }
+            playerBoardState.put(i, hitCode);
+        }
+        for (int i = 0; i < opponentBoardList.size(); i++) {
+            int hitCode;
+            if (opponentBoardList.get(i).status.equals("HIT")) {
+                hitCode = 1;
+            }
+            else if (opponentBoardList.get(i).status.equals("MISS")) {
+                hitCode = 0;
+            }
+            else if (opponentBoardList.get(i).status.equals("SHIP")) {
+                hitCode = 2;
+            }
+            else { //status must be "NONE" hopefully....
+                hitCode = -1;
+            }
+            opponentBoardState.put(i, hitCode);
+        }
+
+        updateViews(playerBoardState, opponentBoardState);
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 0) {
-            if (resultCode == Activity.RESULT_OK) {
-                int missileIndex = data.getIntExtra("missileIndex", 0);
-                int hitCode = GameObjectList.getInstance().updateGame(_currentGameIndex, missileIndex);
+    public void onMakeGuessResponseReceived(boolean success) {
+        GameLobbyService.getInstance().getPlayerBoards(_currentGameId, _currentPlayerId);
+    }
 
-                updateViews();
-            }
+
+    @Override
+    public void onGameTurnResponseReceivedListener(boolean success, IsYourTurn isYourTurn) {
+        if (!isYourTurn.isYourTurn) {
+            Intent startWaitScreen = new Intent();
+            startWaitScreen.putExtra("gameId", isYourTurn.gameId);
+            startWaitScreen.putExtra("playerId", isYourTurn.playerId);
+            startWaitScreen.setClass(getActivity(), WaitScreenActivity.class);
+            startActivity(startWaitScreen);
         }
-    }
-
-    private void updateViews() {
-        Map<Integer, Integer> player1State = GameObjectList.getInstance().readGame(_currentGameIndex)._player1State;
-        Map<Integer, Integer> player2State = GameObjectList.getInstance().readGame(_currentGameIndex)._player2State;
-
-        if (GameObjectList.getInstance().readGame(_currentGameIndex)._currentPlayer == 1) {
-            for (Integer hitMissIndex : player2State.keySet()) {
-                if (player2State.get(hitMissIndex) == 0) {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.WHITE);
-                } else if (player2State.get(hitMissIndex) == 1) {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.RED);
-                } else {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.BLUE);
-                }
-            }
-            for (Integer hitMissIndex : player1State.keySet()) {
-                if (player1State.get(hitMissIndex) == 0) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.WHITE);
-                } else if (player1State.get(hitMissIndex) == 1) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.RED);
-                } else if (player1State.get(hitMissIndex) == 2) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.GRAY);
-                } else {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.BLUE);
-                }
-            }
-        } else {
-            for (Integer hitMissIndex : player1State.keySet()) {
-                if (player1State.get(hitMissIndex) == 0) {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.WHITE);
-                } else if (player1State.get(hitMissIndex) == 1) {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.RED);
-                } else {
-                    _opponentGrid.setSpaceColor(hitMissIndex, Color.BLUE);
-                }
-            }
-            for (Integer hitMissIndex : player2State.keySet()) {
-                if (player2State.get(hitMissIndex) == 0) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.WHITE);
-                } else if (player2State.get(hitMissIndex) == 1) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.RED);
-                } else if (player2State.get(hitMissIndex) == 2) {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.GRAY);
-                } else {
-                    _ownGrid.setSpaceColor(hitMissIndex, Color.BLUE);
-                }
-            }
-        }
-    }
-
-    public void setCurrentGame(int gameId) {
-        _currentGameIndex = gameId;
-        updateViews();
-    }
-
-    public void addNewGame() {
-        //GameObjectList.getInstance().createNewGame();
-        GameLobbyService.getInstance().createNewGame("WinnerTakesAll", "Luigi");
-        _currentGameIndex = GameObjectList.getInstance().getGameObjectsCount() - 1;
-        updateViews();
     }
 }
